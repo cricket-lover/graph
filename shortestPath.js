@@ -1,37 +1,38 @@
-const getAdjacencyList = function (arr) {
-  const json = {};
-  for (let index = 0; index < arr.length; index++) {
-    const [key, value, weight] = arr[index];
-    if (json[key] === undefined) {
-      json[key] = [[value, weight]];
-      json[key] = [[value, weight]];
+const getAdjacencyList = function (pairs) {
+  const graph = {};
+  for (let index = 0; index < pairs.length; index++) {
+    const [key, value, weight] = pairs[index];
+    if (graph[key] === undefined) {
+      graph[key] = [[value, weight]];
+      graph[key] = [[value, weight]];
     } else {
-      json[key].push([value, weight]);
+      graph[key].push([value, weight]);
     }
   }
-  return json;
+  return graph;
 };
 
-const createDistanceTable = function (graph) {
+const createDistanceTable = function (nodes, source) {
   const table = {};
-  const nodes = Object.keys(graph);
   nodes.forEach((e) => {
-    table[e] = Infinity;
+    table[e] = { distance: Infinity };
   });
+  table[source].distance = 0;
   return table;
 };
 
-const getUnvisitedNeighbors = function (graph, visited) {
-  const unvisitedNeighbors = graph.filter((e) => {
+const getUnvisitedNeighbors = function (vertices, visited) {
+  const unvisitedNeighbors = vertices.filter((e) => {
     return !visited.has(e[0]);
   });
   return unvisitedNeighbors;
 };
 
 const updateTable = function (table, unvisitedNeighbors, currentNode) {
-  unvisitedNeighbors.forEach((e) => {
-    if (e[1] < table[e[0]]) {
-      table[e[0]] = table[currentNode] + e[1];
+  unvisitedNeighbors.forEach(([to, weight]) => {
+    if (weight < table[to].distance) {
+      table[to].distance = table[currentNode].distance + weight;
+      table[to].parent = currentNode;
     }
   });
   return table;
@@ -42,35 +43,45 @@ const findCurrentNode = function (table, visited) {
   let currentNode;
   for (const node in table) {
     if (!visited.has(node)) {
-      if (table[node] < minValue) {
+      if (table[node].distance < minValue) {
         currentNode = node;
-        minValue = table[node];
+        minValue = table[node].distance;
       }
     }
   }
   return currentNode;
 };
 
-const hasAllIncluded = function (vertices, visited) {
+const hasAllProcessed = function (vertices, visited) {
   return vertices.every((e) => visited.has(e));
 };
 
+const getPath = function (table, source, target) {
+  const path = [target];
+  while (table[target].parent !== source) {
+    path.unshift(table[target].parent);
+    target = table[target].parent;
+  }
+  return [source].concat(path);
+};
+
 const getShortestPath = function (graph, source, target) {
-  const vertices = Object.keys(graph);
-  let table = createDistanceTable(graph);
-  table[source] = 0;
+  const nodes = Object.keys(graph);
+  const vertices = new Set();
+  nodes.forEach((vertex) => vertices.add(vertex));
+  let table = createDistanceTable(nodes, source);
   const visited = new Set();
   let currentNode = source;
 
-  while (!hasAllIncluded(vertices, visited) && !visited.has(target)) {
+  while (vertices.size !== visited.size && !visited.has(target)) {
     const neighbors = graph[currentNode];
     const unvisitedNeighbors = getUnvisitedNeighbors(neighbors, visited);
     updateTable(table, unvisitedNeighbors, currentNode);
     visited.add(currentNode);
     currentNode = findCurrentNode(table, visited);
   }
-  console.log(table);
-  return table[target];
+  const path = getPath(table, source, target);
+  return [table, table[target].distance, path];
 };
 
 const pairs = [
@@ -94,5 +105,10 @@ const pairs = [
 
 const graph = getAdjacencyList(pairs);
 
-const shortestPath = getShortestPath(graph, 'a', 'a');
-console.log(shortestPath);
+const source = 'a';
+const destination = 'f';
+const [table, minDistance, path] = getShortestPath(graph, source, destination);
+console.log(
+  table,
+  `\nminimum distance from ${source} to ${destination} is ${minDistance}\nshortest path is ${path}`
+);
